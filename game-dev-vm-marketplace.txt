@@ -1,0 +1,82 @@
+# solutions/game-dev-vm/marketplace.yaml
+name: game-development-ai-vm
+version: 1.0.0
+description: 'AI-Enhanced Game Development Virtual Machine with Lumberyard and Vertex AI Integration'
+
+metadata:
+  author: 
+    name: AI Game Dev Solutions
+    email: support@aigamedev.com
+  support:
+    urls:
+      - https://support.aigamedev.com
+  documentationLink: https://docs.aigamedev.com/vm-setup
+
+spec:
+  type: VM
+  platform: linux
+  recommendedMachineTypes:
+    - n1-standard-8
+    - n1-highmem-16
+  gpuTypes:
+    - NVIDIA_TESLA_T4
+    - NVIDIA_TESLA_V100
+
+deployment:
+  requiresLicense: true
+  billingModel: hourly
+  
+  infrastructure:
+    - computeEngine:
+        machineImage: 
+          - ubuntu-2204-lts
+          - cos-stable
+        minimumRamGB: 32
+        recommendedRamGB: 64
+        minimumCpuCores: 8
+        recommendedCpuCores: 16
+        gpuRequired: true
+
+softwareStack:
+  - gameEngine:
+      name: Lumberyard
+      version: 1.28.0
+      installMethod: automated
+  
+  - aiPlatform:
+      name: Vertex AI
+      version: latest
+      services:
+        - imageGeneration
+        - modelTraining
+        - gameDesignAssistant
+
+  - developmentTools:
+      - docker: 20.10.21
+      - kubernetes: 1.25.4
+      - tensorFlow: 2.12.0
+      - pytorch: 1.13.1
+
+networking:
+  firewall:
+    allowedPorts:
+      - 22   # SSH
+      - 3389 # Remote Desktop
+      - 8080 # Game Development Ports
+      - 443  # HTTPS
+  
+  securityConfiguration:
+    - googleManagedFirewall
+    - ddosProtection: true
+    - intrusionDetection: true
+
+pricing:
+  baseHourlyRate: 2.50
+  gpuHourlyRate: 3.20
+  freeTrialDays: 14
+  
+marketplaceListings:
+  categories:
+    - gamesDevelopment
+    - artificialIntelligence
+    - cloudComputing
