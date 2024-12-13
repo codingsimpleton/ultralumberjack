@@ -1,0 +1,164 @@
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part
+from google.cloud import vision_v1
+from PIL import Image
+import numpy as np
+import torch
+import torchvision.transforms as transforms
+import re  # Added for extracting game mechanics
+
+
+class GameDesignVisionAgent:
+    def __init__(self):
+        """
+        Zaawansowany agent AI z wielomodalnym rozpoznawaniem obrazów,
+        zaktualizowany do korzystania z Gemini 2.0
+        """
+        project_id = 'ultarlaberjack'
+        vertexai.init(project=project_id)
+
+        # Use the latest Gemini model for multimodal tasks
+        self.vision_model = GenerativeModel("gemini-2.0-flash")
+        self.google_vision_client = vision_v1.ImageAnnotatorClient()
+
+        # Model deep learning do szczegółowej analizy
+        try:
+             self.deep_vision_model = torch.hub.load(
+                'facebookresearch/detectron2',
+                'maskrcnn_R_50_FPN_3x',
+                pretrained=True
+            )
+             self.deep_vision_model.eval()  # Set to eval mode for inference
+
+        except Exception as e:
+            print(f"Error loading deep learning model: {e}")
+            self.deep_vision_model = None
+
+        # Transformacje obrazów
+        self.image_transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            )
+        ])
+
+    def analyze_game_design_image(self, image_path):
+        """
+        Wielowarstwowa analiza obrazu projektowego gry z użyciem Gemini 2.0
+
+        Args:
+            image_path (str): Ścieżka do pliku obrazu
+
+        Returns:
+            dict: Kompleksowa analiza obrazu
+        """
+        try:
+            image = self._load_image(image_path)
+        except Exception as e:
+            return {"error": f"Failed to load image: {e}"}
+
+        # Semantic analysis with enhanced capabilities of Gemini 2.0
+        semantic_analysis = self._semantic_image_analysis(image)
+
+        # Object detection remains the same
+        object_detection = self._deep_object_detection(image) if self.deep_vision_model else {}
+
+        # Color and style analysis with potential use of new multimodal features
+        color_style_analysis = self._color_style_analysis(image)
+
+        return {
+            "semantic_insights": semantic_analysis,
+            "object_detection": object_detection,
+            "color_style": color_style_analysis
+        }
+
+    def _semantic_image_analysis(self, image):
+        """
+        Semantyczna analiza obrazu przy użyciu Gemini 2.0
+
+        Args:
+            image (PIL.Image): Obraz do analizy
+
+        Returns:
+            dict: Semantyczne insights
+        """
+        image_part = Part.from_data(
+            data=np.array(image),
+            mime_type="image/png"
+        )
+
+        prompt = """Analyze this image from a game design perspective.
+        Identify potential game world elements, possible game mechanics, visual style, and provide design suggestions. Respond considering the new capabilities of Gemini 2.0."""
+
+        # Generate content with Gemini 2.0 which can provide both text and image outputs
+        response = self.vision_model.generate_content([image_part, prompt])
+        
+        if response.text:
+            return {
+            "design_insights": response.text,
+            "potential_game_mechanics": self._extract_game_mechanics(response.text),
+            "suggested_visual_elements": response.images if hasattr(response, 'images') else []
+        }
+        else:
+          return {"design_insights": "No text response from Gemini", 
+                  "potential_game_mechanics": [],
+                  "suggested_visual_elements": []}
+          
+
+    def _load_image(self, image_path):
+      """
+      Load image from given path
+      """
+      try:
+          return Image.open(image_path).convert("RGB")
+      except Exception as e:
+        raise Exception(f"Error opening image: {e}")
+   
+    def _deep_object_detection(self, image):
+          """
+          Detect objects using a deep learning model
+          """
+          if not self.deep_vision_model:
+              return {}
+          try:
+            image_tensor = self.image_transform(image).unsqueeze(0)  # Add batch dimension
+            with torch.no_grad():
+                predictions = self.deep_vision_model(image_tensor)
+            return predictions
+          except Exception as e:
+            print(f"Error in object detection: {e}")
+            return {}
+
+    def _color_style_analysis(self, image):
+      """
+      Simple color style analysis (can be extended further)
+      """
+      try:
+        image_np = np.array(image)
+        average_color = np.mean(image_np, axis=(0,1))
+        return {"average_color": average_color.tolist()}
+      except Exception as e:
+          print(f"Error in color style analysis: {e}")
+          return {}
+
+    def _extract_game_mechanics(self, text):
+      """
+      Extract potential game mechanics from text using regex
+      """
+      mechanics = re.findall(r"(?:mechanic|mechanics|gameplay mechanic):\s*([\w\s,-]+)", text, re.IGNORECASE)
+      return [mech.strip() for mech in mechanics]
+
+def main():
+    agent = GameDesignVisionAgent()
+
+    image_path = 'path/to/game_concept_image.png'  # Replace with a real path
+
+    analysis = agent.analyze_game_design_image(image_path)
+
+    print("Analiza projektu gry:")
+    print(analysis)
+
+if __name__ == "__main__":
+    main()
